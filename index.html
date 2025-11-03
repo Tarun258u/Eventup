@@ -232,7 +232,23 @@
       }
     })();
 
+    // Auto-refresh config every 30 seconds
+setInterval(() => {
+  fetch('config.json', { cache: 'no-store' })
+    .then(r => r.json())
+    .then(latest => {
+      if (latest.updatedAt !== CONFIG.updatedAt) {
+        console.log('New config detected — updating page...');
+        CONFIG = { ...CONFIG, ...latest };
+        render(); // re-renders timeline, speakers, banner, etc.
+      }
+    })
+    .catch(err => console.warn('Auto-refresh check failed:', err));
+}, 30000); // check every 30 seconds
+
+
     // END
   </script>
 </body>
 </html>
+
