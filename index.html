@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Event Timeline — NFC Link</title>
+  <meta name="description" content="Event timeline & speaker trivia — quick NFC-friendly page" />
+  <style>
+    /* New color scheme provided by user */
+    :root{
+      --bg:#0b1110; /* deep background to contrast the green palette */
+      --card:#07110f;
+      --muted:rgba(255,255,255,0.75);
+      --accent1:#A6D7B7; /* light mint */
+      --accent2:#6E9985; /* medium green */
+      --accent3:#5C7B69; /* deep green */
+      --glass:rgba(255,255,255,0.03);
+    }
+
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    body{background:linear-gradient(180deg,#07110f 0%,#081412 100%);color:#eaf6ef;display:flex;align-items:flex-start;justify-content:center;padding:20px}
+    .wrap{max-width:980px;width:100%}
+
+    /* banner */
+    .banner-wrap{overflow:hidden;white-space:nowrap;border-radius:12px;background:linear-gradient(90deg,var(--accent1),var(--accent2) 60%);padding:10px 0;margin-bottom:18px;box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+    .marquee{display:inline-block;padding-left:100%;animation:marquee 18s linear infinite;font-weight:700;color:#05220f}
+    @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}
+
+    /* header */
+    header{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+    .logo{width:56px;height:56px;border-radius:8px;background:linear-gradient(180deg,var(--accent3),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;color:#07110f}
+    h1{font-size:20px;margin:0}
+    p.lead{color:var(--muted);margin:0}
+
+    /* cards */
+    .grid{display:grid;grid-template-columns:1fr 360px;gap:18px}
+    .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 6px 24px rgba(2,6,23,0.6);border:1px solid rgba(166,215,183,0.06)}
+
+    .timeline{list-style:none;padding:0;margin:0}
+    .timeline li{padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.03);display:flex;gap:10px}
+    .time{width:88px;color:var(--muted);font-size:13px}
+    .event{flex:1}
+    .event h3{margin:0;font-size:15px}
+    .event p{margin:4px 0 0;color:var(--muted);font-size:13px}
+
+    /* speakers */
+    .speakers .speaker{display:flex;gap:12px;padding:10px 0;border-bottom:1px dashed rgba(255,255,255,0.02);align-items:center}
+    .avatar{width:56px;height:56px;border-radius:8px;background:linear-gradient(180deg,var(--accent1),var(--accent3));display:flex;align-items:center;justify-content:center;font-weight:700;color:#042217}
+    .meta{font-size:13px}
+    .meta .role{color:var(--muted);font-size:12px}
+    .speaker-btn{background:transparent;border:none;color:var(--accent1);cursor:pointer;font-weight:600;padding:0;font-size:15px}
+    .speaker-btn:focus{outline:2px solid rgba(166,215,183,0.35);outline-offset:3px;border-radius:6px}
+
+    footer{margin-top:14px;color:var(--muted);font-size:13px}
+
+    /* modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,3,0.6);display:none;align-items:center;justify-content:center;padding:16px}
+    .modal{background:linear-gradient(180deg,#07110f,#0b1411);border-radius:12px;padding:18px;max-width:720px;width:100%;box-shadow:0 20px 60px rgba(2,6,3,0.7);border:1px solid rgba(92,123,105,0.08)}
+    .modal h3{margin:0 0 8px}
+    .modal .close{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:6px 10px;border-radius:8px;cursor:pointer;color:var(--muted)}
+
+    .hint{font-size:12px;color:#9fb3a8;margin-top:8px}
+
+    /* responsive */
+    @media (max-width:880px){.grid{grid-template-columns:1fr}.marquee{animation-duration:12s}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="banner-wrap" id="bannerWrap" aria-hidden="false">
+      <div class="marquee" id="marqueeText">Loading current status...</div>
+    </div>
+
+    <header>
+      <div class="logo">NFC</div>
+      <div>
+        <h1 id="eventTitle">Event name (edit in repo)</h1>
+        <p class="lead" id="eventSubtitle">Short subtitle / location — tap the NFC card to open this page</p>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <h2 style="margin-top:0">Timeline</h2>
+        <ul class="timeline" id="timelineList">
+          <!-- populated by JS -->
+        </ul>
+        <p class="hint">Tip: to update the page for all guests, edit <code>config.json</code> in the GitHub repo and commit. GitHub Pages will publish the change.</p>
+      </section>
+
+      <aside class="card speakers">
+        <h3 style="margin-top:0">Speakers</h3>
+        <div id="speakersList">
+          <!-- populated by JS -->
+        </div>
+        <p class="hint">Click a speaker's name to open their trivia card. Press <strong>b</strong> to open a quick banner editor (local change).</p>
+      </aside>
+    </div>
+
+    <footer>
+      <div id="updatedAt">Last updated: —</div>
+    </footer>
+  </main>
+
+  <!-- Modal for speaker trivia -->
+  <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal" role="document">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <div>
+          <h3 id="modalName">Speaker name</h3>
+          <div id="modalRole" style="color:var(--muted);font-size:13px;margin-bottom:8px">Role</div>
+        </div>
+        <div>
+          <button class="close" id="modalClose">Close</button>
+        </div>
+      </div>
+      <div id="modalTrivia" style="margin-top:10px;color:var(--muted);font-size:14px"></div>
+    </div>
+  </div>
+
+  <script>
+    // DEFAULT CONFIG (fallback if config.json not found)
+    const fallbackConfig = {
+      eventTitle: "Regulatory Tech Showcase — 3 Nov 2025",
+      eventSubtitle: "Confidential — Technical demo for regulators",
+      banner: "Welcome — registration open | Keynote starting at 10:30 AM",
+      updatedAt: (new Date()).toISOString(),
+      timeline: [
+        {time: "09:30", title: "Registration & Networking", desc: "Coffee and check-in"},
+        {time: "10:00", title: "Opening Remarks", desc: "Event host"},
+        {time: "10:15", title: "Keynote — Technical overview", desc: "High-level architecture & demo"},
+        {time: "11:00", title: "Breakout demos", desc: "Hands-on NFC & demos"}
+      ],
+      speakers: [
+        {id: "s1", name: "Alex Morgan", role: "CTO", trivia: "Leads platform reliability — authored two internal RFCs."},
+        {id: "s2", name: "Priya Sharma", role: "Head of Engineering", trivia: "Worked on secure NFC integrations for payments."}
+      ]
+    };
+
+    let CONFIG = fallbackConfig;
+
+    // Try fetch config.json from same repo (recommended way for quick edits)
+    fetch('config.json', {cache: 'no-store'}).then(r=>{
+      if(!r.ok) throw new Error('no config');
+      return r.json();
+    }).then(j=>{ CONFIG = {...fallbackConfig, ...j}; render(); })
+    .catch(e=>{ console.warn('config.json not found or failed to load — using fallback', e); render(); });
+
+    function render(){
+      document.getElementById('eventTitle').textContent = CONFIG.eventTitle;
+      document.getElementById('eventSubtitle').textContent = CONFIG.eventSubtitle;
+      document.getElementById('marqueeText').textContent = CONFIG.banner;
+      document.getElementById('updatedAt').textContent = 'Last updated: ' + (CONFIG.updatedAt ? new Date(CONFIG.updatedAt).toLocaleString() : '—');
+
+      const tl = document.getElementById('timelineList'); tl.innerHTML='';
+      (CONFIG.timeline || []).forEach(item=>{
+        const li = document.createElement('li');
+        li.innerHTML = `<div class="time">${escapeHtml(item.time)}</div><div class="event"><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.desc||'')}</p></div>`;
+        tl.appendChild(li);
+      });
+
+      const sp = document.getElementById('speakersList'); sp.innerHTML='';
+      (CONFIG.speakers || []).forEach(s=>{
+        const d = document.createElement('div'); d.className='speaker';
+        d.innerHTML = `<div class="avatar">${initials(s.name)}</div><div class="meta"><button class="speaker-btn" data-id="${escapeHtml(s.id||s.name)}">${escapeHtml(s.name)}</button><div class="role">${escapeHtml(s.role||'')}</div></div>`;
+        sp.appendChild(d);
+      });
+
+      // attach click handlers for speaker buttons
+      document.querySelectorAll('.speaker-btn').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const id = btn.dataset.id;
+          openSpeakerModal(id);
+        });
+      });
+    }
+
+    // Speaker modal logic
+    function openSpeakerModal(id){
+      const speaker = (CONFIG.speakers || []).find(s => (s.id === id) || (s.name === id));
+      if(!speaker) return;
+      document.getElementById('modalName').textContent = speaker.name;
+      document.getElementById('modalRole').textContent = speaker.role || '';
+      document.getElementById('modalTrivia').textContent = speaker.trivia || '';
+      const backdrop = document.getElementById('modalBackdrop');
+      backdrop.style.display = 'flex';
+      backdrop.setAttribute('aria-hidden','false');
+      // trap escape to close
+      function esc(e){ if(e.key === 'Escape'){ closeModal(); }}
+      document.addEventListener('keydown', esc);
+      backdrop._esc = esc;
+    }
+    function closeModal(){
+      const backdrop = document.getElementById('modalBackdrop');
+      backdrop.style.display = 'none';
+      backdrop.setAttribute('aria-hidden','true');
+      if(backdrop._esc) document.removeEventListener('keydown', backdrop._esc);
+    }
+    document.getElementById('modalClose').addEventListener('click', closeModal);
+    document.getElementById('modalBackdrop').addEventListener('click', (e)=>{ if(e.target === e.currentTarget) closeModal(); });
+
+    // simple helpers
+    function initials(name){ if(!name) return ''; return name.split(' ').map(n=>n[0]).slice(0,2).join('').toUpperCase(); }
+    function escapeHtml(s){ if(!s && s!==0) return ''; return String(s).replace(/[&<>\"']/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+
+    // Quick local banner editor (press 'b') - local only, not persisted to repo
+    const ADMIN_PIN = '1987'; // change in code if you want different
+    document.addEventListener('keydown', (e)=>{ if(e.key.toLowerCase()==='b'){ openBannerEditor(); }});
+
+    function openBannerEditor(){
+      const pin = prompt('Enter admin PIN to open banner editor');
+      if(pin !== ADMIN_PIN) { alert('Wrong PIN'); return; }
+      const newText = prompt('Edit banner text (this change is local to this browser):', CONFIG.banner || '');
+      if(newText !== null){
+        CONFIG.banner = newText;
+        document.getElementById('marqueeText').textContent = newText;
+        // offer a quick shareable link with banner query param
+        const q = new URL(location.href);
+        q.searchParams.set('banner', newText);
+        const short = q.href;
+        if(confirm('Banner updated locally. Click OK to copy a temporary link (with banner parameter) to clipboard so others can see it immediately on their device:')){
+          navigator.clipboard?.writeText(short).then(()=>alert('Link copied to clipboard.'), ()=>alert('Could not copy link automatically — copy it from the address bar.'));
+        }
+      }
+    }
+
+    // Allow banner to be set via querystring for temporary live changes
+    (function(){
+      const params = new URLSearchParams(location.search);
+      if(params.has('banner')){
+        CONFIG.banner = params.get('banner');
+      }
+    })();
+
+    // END
+  </script>
+</body>
+</html>
